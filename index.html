@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>JJK: Cursed Technique</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@900&family=Share+Tech+Mono&display=swap');
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Share Tech Mono', 'Courier New', monospace;
+        }
+
+        #ui {
+            position: absolute;
+            top: 8%;
+            width: 100%;
+            text-align: center;
+            color: #fff;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin: 0;
+            letter-spacing: 10px;
+            font-weight: 900;
+            font-family: 'Noto Serif JP', serif;
+            text-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+            background: linear-gradient(to bottom, #fff 30%, #555);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        #technique-name {
+            font-size: 1.1rem;
+            color: #00ffff;
+            margin-top: 12px;
+            font-weight: bold;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            text-shadow: 0 0 12px rgba(0, 255, 255, 0.7);
+            transition: color 0.4s ease, text-shadow 0.4s ease;
+        }
+
+        /* HUD Stats */
+        #hud {
+            position: absolute;
+            bottom: 6%;
+            right: 3%;
+            z-index: 30;
+            pointer-events: none;
+            text-align: right;
+            font-size: 0.65rem;
+            letter-spacing: 2px;
+            color: rgba(0, 255, 255, 0.5);
+            line-height: 1.8;
+        }
+
+        #hud span {
+            display: block;
+        }
+
+        #hud .val {
+            color: rgba(0, 255, 255, 0.9);
+        }
+
+        /* Velocity pulse ring */
+        #pulse-ring {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            width: 200px;
+            height: 200px;
+            margin: -100px 0 0 -100px;
+            border-radius: 50%;
+            border: 2px solid rgba(0, 255, 255, 0.0);
+            pointer-events: none;
+            z-index: 6;
+            transition: none;
+        }
+
+        /* Video container */
+        #video-container {
+            position: absolute;
+            bottom: 2%;
+            left: 2%;
+            transform: scaleX(-1);
+            width: min(200px, 25vw);
+            height: min(150px, 20vh);
+            border: 1px solid rgba(0, 255, 255, 0.15);
+            z-index: 20;
+            background-color: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.9), inset 0 0 20px rgba(0, 255, 255, 0.03);
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.75;
+        }
+
+        #output_canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #grain {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+            opacity: 0.06;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        /* Vignette */
+        #vignette {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 4;
+            background: radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.7) 100%);
+        }
+
+        /* Scanlines */
+        #scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+            opacity: 0.03;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 1) 2px, rgba(0, 0, 0, 1) 4px);
+        }
+    </style>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
+        crossorigin="anonymous"></script>
+</head>
+
+<body>
+
+    <div id="grain"></div>
+    <div id="vignette"></div>
+    <div id="scanlines"></div>
+    <div id="pulse-ring"></div>
+
+    <div id="ui">
+        <h1>呪術廻戦</h1>
+        <div id="technique-name">AWAITING CURSED ENERGY</div>
+    </div>
+
+    <div id="hud">
+        <span>HAND ROT <span class="val" id="hud-rot">---</span></span>
+        <span>PALM TILT <span class="val" id="hud-tilt">---</span></span>
+        <span>DEPTH <span class="val" id="hud-depth">---</span></span>
+        <span>VELOCITY <span class="val" id="hud-vel">---</span></span>
+        <span>SCALE <span class="val" id="hud-scale">---</span></span>
+    </div>
+
+    <div id="video-container">
+        <video class="input_video"></video>
+        <canvas id="output_canvas"></canvas>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+        // ============================================================
+        // SCENE & RENDERER SETUP
+        // ============================================================
+        const scene = new THREE.Scene();
+        const threeCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        threeCamera.position.z = 55;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.body.appendChild(renderer.domElement);
+
+        const composer = new EffectComposer(renderer);
+        composer.addPass(new RenderPass(scene, threeCamera));
+        const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+        composer.addPass(bloomPass);
+
+        // ============================================================
+        // PARTICLE SYSTEM
+        // ============================================================
+        const COUNT = 20000;
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(COUNT * 3);
+        const colors = new Float32Array(COUNT * 3);
+        const sizes = new Float32Array(COUNT);
+        const targetPositions = new Float32Array(COUNT * 3);
+        const targetColors = new Float32Array(COUNT * 3);
+        const targetSizes = new Float32Array(COUNT);
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+        const particleMat = new THREE.PointsMaterial({
+            size: 0.3, vertexColors: true,
+            blending: THREE.AdditiveBlending,
+            transparent: true, depthWrite: false
+        });
+        const particles = new THREE.Points(geometry, particleMat);
+
+        // Pivot group so we can transform around palm center
+        const particleGroup = new THREE.Group();
+        particleGroup.add(particles);
+        scene.add(particleGroup);
+
+        // ============================================================
+        // HAND TRANSFORM STATE  (all smoothed via lerp)
+        // ============================================================
+        const handTransform = {
+            // Raw targets (set from MediaPipe)
+            targetPos: new THREE.Vector3(0, 0, 0),
+            targetRotX: 0,
+            targetRotY: 0,
+            targetRotZ: 0,
+            targetScale: 1.0,
+            targetBloom: 1.0,
+
+            // Current smoothed values
+            pos: new THREE.Vector3(0, 0, 0),
+            rotX: 0,
+            rotY: 0,
+            rotZ: 0,
+            scale: 1.0,
+            bloom: 1.0,
+
+            // Inertia for rotation (for ring effects)
+            inertiaY: 0,
+            inertiaZ: 0,
+
+            // Velocity tracking
+            prevPos: new THREE.Vector3(0, 0, 0),
+            velocity: 0,
+
+            // Is hand detected?
+            active: false,
+        };
+
+        // Smoothing factors
+        const SMOOTH_POS = 0.10;
+        const SMOOTH_ROT = 0.12;
+        const SMOOTH_SCALE = 0.08;
+        const SMOOTH_BLOOM = 0.06;
+        const INERTIA_DECAY = 0.92;
+
+        // ============================================================
+        // COORDINATE CONVERSION
+        // Converts MediaPipe normalized [0,1] → Three.js world space
+        // ============================================================
+        function mpToWorld(lm, vpW, vpH) {
+            // MediaPipe x is mirrored (0=right side of image = left hand)
+            // We flip x to match Three.js camera perspective
+            const x = (0.5 - lm.x) * 80;       // ±40 units wide
+            const y = (0.5 - lm.y) * 55;       // ±27.5 units tall
+            const z = -lm.z * 60;              // depth: closer → larger z
+            return new THREE.Vector3(x, y, z);
+        }
+
+        // ============================================================
+        // HAND ANALYSIS FUNCTIONS
+        // ============================================================
+
+        // Palm center = average of wrist (0) + 4 MCP knuckles (5,9,13,17)
+        function getPalmCenter(lm) {
+            const pts = [0, 5, 9, 13, 17];
+            let x = 0, y = 0, z = 0;
+            pts.forEach(i => { x += lm[i].x; y += lm[i].y; z += lm[i].z; });
+            return { x: x / 5, y: y / 5, z: z / 5 };
+        }
+
+        // Hand rotation: angle of wrist→middleMCP vector in image space
+        // Returns radians, 0 = upright
+        function getHandRotationAngle(lm) {
+            const wrist = lm[0];
+            const midMCP = lm[9]; // middle finger MCP
+            const dx = midMCP.x - wrist.x;
+            const dy = midMCP.y - wrist.y;
+            return Math.atan2(dy, dx) + Math.PI / 2; // +90° so 0 = upright
+        }
+
+        // Palm tilt: angle of indexMCP→pinkyMCP vector (lateral roll)
+        function getPalmTiltAngle(lm) {
+            const idx = lm[5];  // index MCP
+            const pnk = lm[17]; // pinky MCP
+            const dx = pnk.x - idx.x;
+            const dy = pnk.y - idx.y;
+            return Math.atan2(dy, dx); // radians
+        }
+
+        // Palm yaw: use z-depth difference between index and pinky MCP
+        // Positive = palm rotated toward camera on index side
+        function getPalmYaw(lm) {
+            const idx = lm[5];
+            const pnk = lm[17];
+            return (pnk.z - idx.z) * 8; // scale to reasonable radians
+        }
+
+        // Average Z depth of palm landmarks → hand distance estimate
+        // MediaPipe z is relative; more negative = closer
+        function getPalmDepth(lm) {
+            const pts = [0, 5, 9, 13, 17];
+            let z = 0;
+            pts.forEach(i => z += lm[i].z);
+            return z / 5; // typically -0.1 (close) to 0.0 (far)
+        }
+
+        // Finger up checks
+        function isUp(lm, tip, pip) { return lm[tip].y < lm[pip].y; }
+        function pinchDist(lm) { return Math.hypot(lm[8].x - lm[4].x, lm[8].y - lm[4].y); }
+
+        // ============================================================
+        // GESTURE DETECTION
+        // ============================================================
+        function detectGesture(lm) {
+            const pinch = pinchDist(lm);
+            if (pinch < 0.04) return 'purple';
+            if (isUp(lm, 8, 6) && isUp(lm, 12, 10) && isUp(lm, 16, 14) && isUp(lm, 20, 18)) return 'shrine';
+            if (isUp(lm, 8, 6) && isUp(lm, 12, 10) && !isUp(lm, 16, 14)) return 'void';
+            if (isUp(lm, 8, 6) && !isUp(lm, 12, 10)) return 'red';
+            return 'neutral';
+        }
+
+        // ============================================================
+        // PARTICLE SHAPE GENERATORS
+        // ============================================================
+        function getRed(i) {
+            if (i < COUNT * 0.1) {
+                const r = Math.random() * 9;
+                const theta = Math.random() * 6.28, phi = Math.acos(2 * Math.random() - 1);
+                return { x: r * Math.sin(phi) * Math.cos(theta), y: r * Math.sin(phi) * Math.sin(theta), z: r * Math.cos(phi), r: 3, g: 0.1, b: 0.1, s: 2.5 };
+            }
+            const armCount = 3, t = i / COUNT;
+            const angle = t * 15 + ((i % armCount) * (Math.PI * 2 / armCount));
+            const radius = 2 + t * 40;
+            return { x: radius * Math.cos(angle), y: radius * Math.sin(angle), z: (Math.random() - 0.5) * (10 * t), r: 0.8, g: 0, b: 0, s: 1.0 };
+        }
+
+        function getVoid(i) {
+            if (i < COUNT * 0.15) {
+                const angle = Math.random() * Math.PI * 2;
+                return { x: 26 * Math.cos(angle), y: 26 * Math.sin(angle), z: (Math.random() - 0.5) * 1, r: 1, g: 1, b: 1, s: 2.5 };
+            }
+            const radius = 30 + Math.random() * 90;
+            const theta = Math.random() * Math.PI * 2, phi = Math.acos(2 * Math.random() - 1);
+            return { x: radius * Math.sin(phi) * Math.cos(theta), y: radius * Math.sin(phi) * Math.sin(theta), z: radius * Math.cos(phi), r: 0.1, g: 0.6, b: 1.0, s: 0.7 };
+        }
+
+        function getPurple(i) {
+            if (Math.random() > 0.8) return { x: (Math.random() - 0.5) * 100, y: (Math.random() - 0.5) * 100, z: (Math.random() - 0.5) * 100, r: 0.5, g: 0.5, b: 0.7, s: 0.8 };
+            const r = 20, theta = Math.random() * Math.PI * 2, phi = Math.acos(2 * Math.random() - 1);
+            return { x: r * Math.sin(phi) * Math.cos(theta), y: r * Math.sin(phi) * Math.sin(theta), z: r * Math.cos(phi), r: 0.6, g: 0.5, b: 1.0, s: 2.5 };
+        }
+
+        function getShrine(i) {
+            const total = COUNT;
+            if (i < total * 0.3) return { x: (Math.random() - 0.5) * 80, y: -15, z: (Math.random() - 0.5) * 80, r: 0.4, g: 0, b: 0, s: 0.8 };
+            else if (i < total * 0.4) {
+                const px = ((i % 4) < 2 ? 1 : -1) * 12, pz = ((i % 4) % 2 === 0 ? 1 : -1) * 8;
+                return { x: px + (Math.random() - 0.5) * 2, y: -15 + Math.random() * 30, z: pz + (Math.random() - 0.5) * 2, r: 0.2, g: 0.2, b: 0.2, s: 0.6 };
+            } else if (i < total * 0.6) {
+                const t = Math.random() * Math.PI * 2, rad = Math.random() * 30;
+                const curve = Math.pow(rad / 30, 2) * 10;
+                return { x: rad * Math.cos(t), y: 15 - curve + (Math.random() * 2), z: rad * Math.sin(t) * 0.6, r: 0.6, g: 0, b: 0, s: 0.6 };
+            }
+            return { x: 0, y: 0, z: 0, r: 0, g: 0, b: 0, s: 0 };
+        }
+
+        // ============================================================
+        // STATE MANAGEMENT
+        // ============================================================
+        let currentTech = 'neutral';
+        let glowColor = '#00ffff';
+        let baseBloom = 1.0;
+
+        const techniqueConfig = {
+            neutral: { glow: '#00ffff', label: 'AWAITING CURSED ENERGY', bloom: 1.0 },
+            red: { glow: '#ff3333', label: 'Reverse Cursed Technique: Red', bloom: 2.5 },
+            void: { glow: '#00ffff', label: 'Domain Expansion: Infinite Void', bloom: 2.0 },
+            purple: { glow: '#bb00ff', label: 'Secret Technique: Hollow Purple', bloom: 4.0 },
+            shrine: { glow: '#ff0000', label: 'Domain Expansion: Malevolent Shrine', bloom: 2.5 },
+        };
+
+        function updateState(tech) {
+            if (currentTech === tech) return;
+            currentTech = tech;
+
+            const cfg = techniqueConfig[tech];
+            glowColor = cfg.glow;
+            baseBloom = cfg.bloom;
+
+            const nameEl = document.getElementById('technique-name');
+            nameEl.innerText = cfg.label;
+            nameEl.style.color = cfg.glow;
+            nameEl.style.textShadow = `0 0 12px ${cfg.glow}`;
+
+            // Rebuild particle targets
+            for (let i = 0; i < COUNT; i++) {
+                let p;
+                if (tech === 'neutral') {
+                    if (i < COUNT * 0.05) {
+                        const r = 15 + Math.random() * 20, t2 = Math.random() * 6.28, ph = Math.random() * 3.14;
+                        p = { x: r * Math.sin(ph) * Math.cos(t2), y: r * Math.sin(ph) * Math.sin(t2), z: r * Math.cos(ph), r: 0.1, g: 0.1, b: 0.2, s: 0.4 };
+                    } else { p = { x: 0, y: 0, z: 0, r: 0, g: 0, b: 0, s: 0 }; }
+                } else if (tech === 'red') p = getRed(i);
+                else if (tech === 'void') p = getVoid(i);
+                else if (tech === 'purple') p = getPurple(i);
+                else if (tech === 'shrine') p = getShrine(i);
+
+                targetPositions[i * 3] = p.x;
+                targetPositions[i * 3 + 1] = p.y;
+                targetPositions[i * 3 + 2] = p.z;
+                targetColors[i * 3] = p.r;
+                targetColors[i * 3 + 1] = p.g;
+                targetColors[i * 3 + 2] = p.b;
+                targetSizes[i] = p.s;
+            }
+        }
+
+        // ============================================================
+        // APPLY HAND TRANSFORM → targets
+        // ============================================================
+        function applyHandTransform(lm) {
+            handTransform.active = true;
+
+            // Palm center
+            const palm = getPalmCenter(lm);
+            const world = mpToWorld(palm, 640, 480);
+            handTransform.targetPos.copy(world);
+
+            // Rotation
+            const rotZ = getHandRotationAngle(lm);     // hand in-plane rotation
+            const rotX = getPalmTiltAngle(lm);          // lateral tilt
+            const rotY = getPalmYaw(lm);                // yaw (toward/away camera)
+
+            // Per-technique rotation mapping
+            if (currentTech === 'shrine') {
+                // Shrine stays upright but follows hand yaw horizontally
+                handTransform.targetRotX = 0;
+                handTransform.targetRotY = rotY;
+                handTransform.targetRotZ = 0;
+            } else if (currentTech === 'void') {
+                // Void rings rotate with hand fully
+                handTransform.targetRotX = rotX * 0.7;
+                handTransform.targetRotY = rotY;
+                handTransform.targetRotZ = rotZ;
+            } else if (currentTech === 'purple') {
+                // Purple sphere tilts with palm orientation
+                handTransform.targetRotX = rotX * 0.8;
+                handTransform.targetRotY = rotY * 0.5;
+                handTransform.targetRotZ = rotZ * 0.6;
+            } else {
+                // Red and neutral: full orientation tracking
+                handTransform.targetRotX = rotX * 0.5;
+                handTransform.targetRotY = rotY * 0.6;
+                handTransform.targetRotZ = rotZ;
+            }
+
+            // Depth-based scale & bloom
+            const depth = getPalmDepth(lm); // typically -0.15 to 0.0
+            // Closer (more negative z) → scale up
+            const depthNorm = Math.max(0, Math.min(1, (-depth + 0.0) / 0.15)); // 0=far, 1=close
+            handTransform.targetScale = 0.6 + depthNorm * 1.2;
+            handTransform.targetBloom = baseBloom * (0.7 + depthNorm * 0.9);
+
+            // Update HUD
+            document.getElementById('hud-rot').textContent = (rotZ * 180 / Math.PI).toFixed(1) + '°';
+            document.getElementById('hud-tilt').textContent = (rotX * 180 / Math.PI).toFixed(1) + '°';
+            document.getElementById('hud-depth').textContent = depthNorm.toFixed(2);
+            document.getElementById('hud-scale').textContent = handTransform.targetScale.toFixed(2);
+        }
+
+        function deactivateHand() {
+            handTransform.active = false;
+            handTransform.targetPos.set(0, 0, 0);
+            handTransform.targetRotX = 0;
+            handTransform.targetRotY = 0;
+            handTransform.targetRotZ = 0;
+            handTransform.targetScale = 1.0;
+            handTransform.targetBloom = baseBloom;
+        }
+
+        // ============================================================
+        // SMOOTH TRANSFORM UPDATE (called in animation loop)
+        // ============================================================
+        function smoothHandTransforms(dt) {
+            const s = Math.min(1.0, SMOOTH_POS * 60 * dt);
+            const sr = Math.min(1.0, SMOOTH_ROT * 60 * dt);
+            const ss = Math.min(1.0, SMOOTH_SCALE * 60 * dt);
+            const sb = Math.min(1.0, SMOOTH_BLOOM * 60 * dt);
+
+            // Position
+            handTransform.prevPos.copy(handTransform.pos);
+            handTransform.pos.lerp(handTransform.targetPos, s);
+
+            // Velocity magnitude
+            const vel = handTransform.pos.distanceTo(handTransform.prevPos) / (dt + 0.001);
+            handTransform.velocity += (vel - handTransform.velocity) * 0.2;
+
+            // Rotation with inertia on y/z for ring/orbital effects
+            handTransform.rotX += (handTransform.targetRotX - handTransform.rotX) * sr;
+
+            // Inertia for void rings
+            if (currentTech === 'void' || currentTech === 'purple') {
+                const diffY = handTransform.targetRotY - handTransform.rotY;
+                handTransform.inertiaY += diffY * 0.15;
+                handTransform.inertiaY *= INERTIA_DECAY;
+                handTransform.rotY += handTransform.inertiaY;
+
+                const diffZ = handTransform.targetRotZ - handTransform.rotZ;
+                handTransform.inertiaZ += diffZ * 0.15;
+                handTransform.inertiaZ *= INERTIA_DECAY;
+                handTransform.rotZ += handTransform.inertiaZ;
+            } else {
+                handTransform.rotY += (handTransform.targetRotY - handTransform.rotY) * sr;
+                handTransform.rotZ += (handTransform.targetRotZ - handTransform.rotZ) * sr;
+            }
+
+            handTransform.scale += (handTransform.targetScale - handTransform.scale) * ss;
+            handTransform.bloom += (handTransform.targetBloom - handTransform.bloom) * sb;
+
+            // Apply to particle group
+            particleGroup.position.copy(handTransform.pos);
+            particleGroup.rotation.x = handTransform.rotX;
+            particleGroup.rotation.y = handTransform.rotY;
+            particleGroup.rotation.z = handTransform.rotZ;
+            particleGroup.scale.setScalar(handTransform.scale);
+
+            // Bloom
+            bloomPass.strength = handTransform.bloom;
+
+            // Update HUD velocity
+            document.getElementById('hud-vel').textContent = handTransform.velocity.toFixed(1);
+        }
+
+        // ============================================================
+        // VELOCITY-BASED PARTICLE PULSE
+        // ============================================================
+        function applyVelocityPulse() {
+            const vel = handTransform.velocity;
+            const pulseFactor = Math.min(1.0, vel * 0.04);
+
+            // Size pulse
+            const siz = particles.geometry.attributes.size.array;
+            for (let i = 0; i < COUNT; i++) {
+                siz[i] = targetSizes[i] * (1.0 + pulseFactor * (Math.sin(i * 0.7 + Date.now() * 0.01) * 0.5 + 0.5));
+            }
+
+            // Pulse ring UI effect
+            const ring = document.getElementById('pulse-ring');
+            const alpha = Math.min(0.6, pulseFactor * 2);
+            const scale = 1.0 + pulseFactor * 3;
+            ring.style.transform = `scale(${scale})`;
+            ring.style.borderColor = `rgba(${glowColor === '#bb00ff' ? '187,0,255' : glowColor === '#ff3333' || glowColor === '#ff0000' ? '255,50,50' : '0,255,255'},${alpha})`;
+            ring.style.boxShadow = alpha > 0.1 ? `0 0 ${20 * pulseFactor}px rgba(0,255,255,${alpha})` : 'none';
+        }
+
+        // ============================================================
+        // TECHNIQUE-SPECIFIC INTRINSIC ANIMATION
+        // (applied ON TOP of hand tracking rotation)
+        // ============================================================
+        let intrinsicAngle = 0;
+        function applyIntrinsicAnimation(dt) {
+            // We animate the inner 'particles' mesh, not the group,
+            // so hand tracking (on the group) is additive.
+            if (currentTech === 'red') {
+                particles.rotation.z -= 0.1 * dt * 60;
+            } else if (currentTech === 'purple') {
+                intrinsicAngle += 0.2 * dt * 60;
+                particles.rotation.z = intrinsicAngle * 0.3;
+                particles.rotation.y = intrinsicAngle * 0.08;
+            } else if (currentTech === 'void') {
+                intrinsicAngle += 0.01 * dt * 60;
+                particles.rotation.z = intrinsicAngle * 0.5;
+            } else if (currentTech === 'shrine') {
+                particles.rotation.set(0, 0, 0); // upright always
+            } else {
+                particles.rotation.y += 0.005 * dt * 60;
+            }
+        }
+
+        // ============================================================
+        // MEDIAPIPE HAND TRACKING SETUP
+        // ============================================================
+        const videoElement = document.querySelector('.input_video');
+        const canvasElement = document.getElementById('output_canvas');
+        const canvasCtx = canvasElement.getContext('2d');
+
+        const hands = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
+        hands.setOptions({ maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.7 });
+
+        hands.onResults((results) => {
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                // Use first detected hand
+                const lm = results.multiHandLandmarks[0];
+
+                drawConnectors(canvasCtx, lm, HAND_CONNECTIONS, { color: glowColor, lineWidth: 4 });
+                drawLandmarks(canvasCtx, lm, { color: '#fff', lineWidth: 1, radius: 2 });
+
+                // Draw any additional hands
+                for (let h = 1; h < results.multiHandLandmarks.length; h++) {
+                    drawConnectors(canvasCtx, results.multiHandLandmarks[h], HAND_CONNECTIONS, { color: glowColor, lineWidth: 2 });
+                }
+
+                const gesture = detectGesture(lm);
+                updateState(gesture);
+                applyHandTransform(lm);
+            } else {
+                updateState('neutral');
+                deactivateHand();
+            }
+        });
+
+        const cameraUtils = new Camera(videoElement, {
+            onFrame: async () => {
+                canvasElement.width = videoElement.videoWidth;
+                canvasElement.height = videoElement.videoHeight;
+                await hands.send({ image: videoElement });
+            },
+            width: 640, height: 480
+        });
+        cameraUtils.start();
+
+        // ============================================================
+        // ANIMATION LOOP
+        // ============================================================
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = Math.min(clock.getDelta(), 0.05); // cap at 50ms
+
+            // 1. Smooth hand transforms → apply to group
+            smoothHandTransforms(dt);
+
+            // 2. Intrinsic animation on inner mesh
+            applyIntrinsicAnimation(dt);
+
+            // 3. Lerp particle positions/colors toward targets
+            const pos = particles.geometry.attributes.position.array;
+            const col = particles.geometry.attributes.color.array;
+
+            for (let i = 0; i < COUNT * 3; i++) {
+                pos[i] += (targetPositions[i] - pos[i]) * 0.1;
+                col[i] += (targetColors[i] - col[i]) * 0.1;
+            }
+
+            // 4. Velocity-based pulse on sizes
+            applyVelocityPulse();
+
+            particles.geometry.attributes.position.needsUpdate = true;
+            particles.geometry.attributes.color.needsUpdate = true;
+            particles.geometry.attributes.size.needsUpdate = true;
+
+            // 5. Camera shake for high-energy techniques
+            const shakeAmt = currentTech !== 'neutral' && handTransform.active
+                ? (currentTech === 'purple' ? 1.2 : 0.4) * (0.5 + handTransform.velocity * 0.01)
+                : 0;
+
+            if (shakeAmt > 0) {
+                renderer.domElement.style.transform = `translate(${(Math.random() - 0.5) * shakeAmt * 8}px, ${(Math.random() - 0.5) * shakeAmt * 8}px)`;
+            } else {
+                renderer.domElement.style.transform = 'translate(0,0)';
+            }
+
+            composer.render();
+        }
+
+        animate();
+
+        // ============================================================
+        // RESIZE
+        // ============================================================
+        window.addEventListener('resize', () => {
+            threeCamera.aspect = window.innerWidth / window.innerHeight;
+            threeCamera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+
+</html>
