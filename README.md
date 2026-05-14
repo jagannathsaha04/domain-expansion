@@ -17,33 +17,9 @@ Built with Vanilla JavaScript, HTML5, Three.js for 3D rendering, and MediaPipe f
 
 ## How to Run Locally
 
-Because this project uses modules and the webcam, you cannot simply open the `index.html` file directly from your file system (due to browser security restrictions like CORS). You must serve it over a local HTTP server.
+To experience the project, simply open the `index.html` file in your preferred modern web browser (like Chrome, Firefox, or Edge). 
 
-### Prerequisites
-
-You can use any local web server. If you have Node.js, Python, or VS Code, it's very easy to start one.
-
-**Option 1: Using VS Code (Recommended)**
-1. Open this folder in VS Code.
-2. Install the **Live Server** extension.
-3. Click "Go Live" in the bottom right corner of the VS Code window. The app will open in your default browser.
-
-**Option 2: Using Python**
-1. Open your terminal and navigate to this folder.
-2. Run the following command:
-   ```bash
-   # If you have Python 3 installed
-   python3 -m http.server
-   ```
-3. Open your browser and go to `http://localhost:8000`.
-
-**Option 3: Using Node.js (npx)**
-1. Open your terminal and navigate to this folder.
-2. Run:
-   ```bash
-   npx serve .
-   ```
-3. Open the URL provided in the terminal (usually `http://localhost:3000`).
+Double-click the `index.html` file or drag and drop it into an open browser window.
 
 ## Usage
 
